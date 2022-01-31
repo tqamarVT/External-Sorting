@@ -1,0 +1,524 @@
+import java.lang.reflect.Array;
+
+/**
+ * Generic Key-Value pair Heap. Note that Heaps can store duplicate key-value
+ * pairs. Can be min Heap or max Heap. By default, it is a min Heap. Use
+ * Heap.max in constructor for a max Heap.
+ * 
+ * @author Taimoor Qamar
+ * @version 10-23-19
+ *
+ */
+ 
+public class Heap<K extends Comparable<? super K>, V> {
+    /**
+     * Pass Heap.min into the Constructor to get a min Heap (a Heap that can
+     * find
+     * the minimum in constant time, O(1))
+     */
+    public static final boolean min = true;
+    /**
+     * Pass Heap.max into the Constructor to get a max Heap (a Heap that can
+     * find
+     * the maximum in constant time, O(1))
+     */
+    public static final boolean max = false;
+    private static final int defaultMaxCapacity = 10; // change later
+    private static final boolean defaultOrder = Heap.min;
+
+    protected Node<K, V>[] tree;
+    private int signUsedForOrder; // sort order (aka min Heap or max Heap)
+    protected int size; // how full the tree is
+
+
+    /**
+     * Makes a new Heap with the given sortOrder and maxCapacity. sortOrder
+     * should be either Heap.min (for a min Heap) or Heap.max (for a max Heap).
+     * 
+     * @param sortOrder
+     *            whether min Heap or max Heap. Use Heap.min or Heap.max.
+     * @param maxCapacity
+     *            The maximum number of records that can be stored in this Heap.
+     */
+    @SuppressWarnings("unchecked")
+    public Heap(boolean sortOrder, int maxCapacity) {
+        if (maxCapacity <= 0) {
+            throw new IllegalArgumentException(
+                "negative or 0 maxCapacity in Heap");
+        }
+        tree = (Node<K, V>[])new Node[maxCapacity];
+        if (sortOrder) {
+            signUsedForOrder = 1; // min
+        }
+        else {
+            signUsedForOrder = -1; // max
+        }
+        size = 0;
+    }
+
+
+    /**
+     * Makes a new Heap with the given sortOrder and the default maxCapacity.
+     * sortOrder should be either Heap.min (for a min Heap) or Heap.max (for a
+     * max Heap).
+     * 
+     * @param sortOrder
+     *            whether min Heap or max Heap. Use Heap.min or Heap.max.
+     */
+    public Heap(boolean sortOrder) {
+        this(sortOrder, defaultMaxCapacity);
+    }
+
+
+    /**
+     * Makes a new min Heap with the given maxCapacity.
+     * 
+     * @param maxCapacity
+     *            The maximum number of records that can be stored in this Heap.
+     */
+    public Heap(int maxCapacity) {
+        this(defaultOrder, maxCapacity);
+    }
+
+
+    /**
+     * Makes a new min Heap with the default maxCapacity.
+     */
+    public Heap() {
+        this(defaultOrder, defaultMaxCapacity);
+    }
+
+
+    /**
+     * Inserts a new record into this Heap with key k and value v
+     * 
+     * @param k
+     *            the key of the record to be inserted
+     * @param v
+     *            the value of the record to be inserted
+     */
+    public void insert(K k, V v) {
+        if (size == tree.length) {
+            expandCapacity();
+        }
+        int currentNode = size;
+        tree[size++] = new Node<>(k, v);
+        int parent = parent(currentNode);
+        // sift up:
+        while (parent != -1 && compareNode(tree[currentNode],
+            tree[parent]) <= 0) {
+            swap(currentNode, parent);
+            currentNode = parent;
+            parent = parent(currentNode);
+        }
+    }
+
+
+    /**
+     * Returns the min value of this Heap (if min Heap) or max value of this
+     * Heap (if max Heap)
+     * 
+     * @return the min or max depending on the type of Heap
+     */
+    public Node<K, V> find() {
+        return new Node<>(tree[0].getKey(), tree[0].getValue());
+    }
+
+
+    /**
+     * Removes and the min value of this Heap (if min Heap) or max value of this
+     * Heap (if max Heap)
+     * 
+     * @return the min or max depending on the type of Heap
+     * @throws NullPointerException
+     *             if Heap is empty
+     */
+    public Node<K, V> remove() {
+        Node<K, V> result = new Node<>(tree[0].getKey(), tree[0].getValue());
+        swap(0, --size);
+        siftDown(0);
+        return result;
+    }
+
+
+    /**
+     * Makes a new Heap in O(n) time as opposed to O(log(n)) of insert. This
+     * changes the Heap so that its contents will be exactly what was in
+     * rawData. In other words, it deletes the heap and then adds the data from
+     * rawData. Please do not pass null array elements.
+     * 
+     * @param rawData
+     *            the array used for buildHeap algorithm
+     */
+    public void buildHeap(Node<K, V>[] rawData) {
+        tree = rawData;
+        size = tree.length;
+        for (int i = size / 2 - 1; i >= 0; i--) {
+            siftDown(i);
+        }
+    }
+
+
+// /**
+// * This method only works with this project. First, output the root to the
+// * buffer. Second, take next input from buffer and store in root. Third,
+// * check if input is too large for this run. If yes, swap with end,
+// * decrement size, and sift down. If not, just sift down.
+// */
+// public void replace(InputBuffer in, OutputBuffer out, K key, V value) {
+//
+// Node<K, V> lastNodeOutput = new Node<>(tree[0].getKey(), tree[0]
+// .getValue());
+// // Buffer.output(tree[0]); //unsure if Buffer.output() will change
+// // result
+// Node<Double, Long> nextInput = in.nextInput();
+// tree[0] = new Node<K, V>((key)nextInput.getKey(),
+// (value)nextInput.getValue());
+// if (tree[0].compareTo(lastNodeOutput) > 0) {
+// swap(0, --size);
+// }
+// siftDown(0);
+//
+// }
+
+    /**
+     * Returns the number of key-value pairs currently in this Heap
+     * 
+     * @return the size
+     */
+    public int getSize() {
+        return size;
+    }
+
+
+    /**
+     * Two Heaps are equal if and only if all of their K,V nodes are equal (aka
+     * their keys) and in the same positions (for the part of the tree that is
+     * being used).
+     * 
+     * @param other
+     *            the Object being compared to this for equality
+     * @return whether this and other are equal
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (other == null) {
+            return false;
+        }
+        if (this == other) {
+            return true;
+        }
+        if (this.getClass() == other.getClass()) {
+            @SuppressWarnings("unchecked") // looks checked to me ^
+            Heap<K, V> otherHeap = (Heap<K, V>)other;
+            if (this.size == otherHeap.size) {
+                for (int i = 0; i < this.size; i++) {
+                    if (!this.tree[i].equals(otherHeap.tree[i])) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+
+    }
+
+
+    /**
+     * Two Heaps are equal if and only if all of their K,V nodes are equal
+     * and in the same positions (for all of the tree even if part is not used).
+     * 
+     * @param other
+     *            the Heap<K, V> being compared to this for equality
+     * @return whether this and other are physically equal
+     */
+    public boolean physicallyEqual(Heap<K, V> other) {
+        if (other == null) {
+            return false;
+        }
+        if (this == other) {
+            return true;
+        }
+        if (this.tree.length == other.tree.length) {
+            for (int i = 0; i < this.tree.length; i++) {
+                if (this.tree[i] == null && other.tree[i] == null) {
+                    continue;
+                }
+                if (this.tree[i] == null || other.tree[i] == null
+                    || !this.tree[i].equals(other.tree[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * Returns a deep copy of an array representation of the keys of this Heap
+     * in order.
+     * 
+     * @return an array of the Nodes in this Heap
+     */
+    @SuppressWarnings("unchecked")
+    public Node<K, V>[] toNodeArray() {
+        Node<K, V>[] result = (Node<K, V>[])new Node[size];
+        for (int i = 0; i < size; i++) {
+            result[i] = tree[i];
+        }
+        return result;
+    }
+
+
+    /**
+     * Returns a deep copy of an array representation of the values of this Heap
+     * in order.
+     * 
+     * @param v
+     *            an array with runtime type same as returned array
+     * @return an array of the values in this Heap
+     */
+    @SuppressWarnings("unchecked")
+    public V[] toValueArray(V[] v) {
+        V[] result = (V[])Array.newInstance(v.getClass().getComponentType(),
+            size);
+        for (int i = 0; i < size; i++) {
+            result[i] = tree[i].getValue();
+        }
+        return result;
+    }
+
+
+    /**
+     * Returns a deep copy of an array representation of the keys of this Heap
+     * in order.
+     * 
+     * @param k
+     *            an array with runtime type same as returned array
+     * @return an array of the keys in this Heap
+     */
+    @SuppressWarnings("unchecked")
+    public K[] toKeyArray(K[] k) {
+        K[] result = (K[])Array.newInstance(k.getClass().getComponentType(),
+            size);
+        for (int i = 0; i < size; i++) {
+            result[i] = tree[i].getKey();
+        }
+        return result;
+    }
+
+
+    /**
+     * Returns a deep copy of the physical array used for the Heap.
+     * 
+     * @return an array of the Nodes in this Heap
+     */
+    @SuppressWarnings("unchecked")
+    public Node<K, V>[] toPhysicalArray() {
+        Node<K, V>[] result = (Node<K, V>[])new Node[tree.length];
+        for (int i = 0; i < tree.length; i++) {
+            result[i] = tree[i];
+        }
+        return result;
+    }
+
+
+    /**
+     * Not sure what this should do (if anything). Prints this weird pyramid.
+     * 
+     * @return a String representation of this Heap
+     */
+    @Override
+    public String toString() {
+        String result = "";
+        if (size == 0) {
+            return result;
+        }
+
+        int numLevels = (int)(Math.log(size) / Math.log(2)) + 1;
+        int i = 0;
+        // for each level (except the final level)
+        for (; i < (int)(Math.log(size) / Math.log(2)); i++) {
+            // print spaces to make tree look nice
+            int estimatedStringLength = tree[0].toString().length();
+            int numCharsInLastLevelIfFull = (int)Math.pow(2, numLevels)
+                * estimatedStringLength - 1 + ((int)Math.pow(2, numLevels) - 1)
+                    * 2;
+            // excluding spaces for the next variable:
+            int numCharsInThisLevel = (int)Math.pow(2, i)
+                * estimatedStringLength - 1 + ((int)Math.pow(2, i) - 1) * 2;
+            int numSpacesInFront = numCharsInLastLevelIfFull / 2
+                - numCharsInThisLevel / 2;
+            for (int q = 0; q < numSpacesInFront; q++) {
+                result += " ";
+            }
+
+            // for each node in this (completely filled) level
+            for (int j = (int)Math.pow(2, i) - 1; j < (int)Math.pow(2, i + 1)
+                - 1; j++) {
+                result += tree[j].toString() + ", ";
+            }
+            result += "\n";
+        }
+        // print final level
+        for (int z = (int)Math.pow(2, i) - 1; z < size; z++) {
+            result += tree[z].toString() + ", ";
+        }
+        return result;
+    }
+
+
+    /**
+     * helper method to simplify comparison that varies if Heap is min or max. I
+     * just pretend that I am making a min Heap, and this method makes it work
+     * for max Heap too.
+     * 
+     * @param first
+     *            is like this in this.compareTo(other)
+     * @param second
+     *            is like other in this.compareTo(other)
+     * @return If this key is greater than the other key, return a positive int.
+     *         If this key is less than the other key, return a negative int. If
+     *         the keys are equal, return 0.
+     */
+    protected int compareNode(Node<K, V> first, Node<K, V> second) {
+        return signUsedForOrder * first.compareTo(second);
+    }
+
+
+    /**
+     * helper method to find the parent of a given Node that is in this
+     * Heap (could be optimized)
+     * 
+     * @param position
+     *            the position of the child whose parent you want to find
+     * @return parent parent Node or -1 if not parent not found or child not
+     *         found in Heap
+     */
+    protected int parent(int position) {
+        if (position <= 0 || position >= size) {
+            return -1;
+        }
+        return (position - 1) / 2;
+    }
+
+
+    /**
+     * helper method to find the left child of a given Node that is in this
+     * Heap (could be optimized)
+     * 
+     * @param position
+     *            the position of the parent whose left child you want to find
+     * @return child child Node or -1 if not parent not found or child not
+     *         found in Heap
+     */
+    protected int leftChild(int position) {
+        if (position < 0 || 2 * position + 1 + 1 > size) {
+            return -1;
+        }
+        return 2 * position + 1;
+    }
+
+
+    /**
+     * helper method to find the left child of a given Node that is in this
+     * Heap (could be optimized)
+     * 
+     * @param position
+     *            the position of the parent whose right child you want to find
+     * @return child child Node or -1 if not parent not found or child not
+     *         found in Heap
+     */
+    protected int rightChild(int position) {
+        if (position < 0 || 2 * (position + 1) + 1 > size) {
+            return -1;
+        }
+        return 2 * (position + 1);
+    }
+
+
+    /**
+     * helper method to swap values in an array (could throw
+     * IndexOutOfBoundsException) (could be optimized)
+     * 
+     * @param first
+     *            the index of the element that goes to position second
+     * @param second
+     *            the index of the element that goes to position first
+     */
+    protected void swap(int first, int second) {
+        Node<K, V> temp = tree[first];
+        tree[first] = tree[second];
+        tree[second] = temp;
+    }
+
+
+    /**
+     * Expands the capacity of the Heap by doubling its current capacity.
+     */
+    protected void expandCapacity() {
+
+        @SuppressWarnings("unchecked")
+        Node<K, V>[] newArray = (Node<K, V>[])new Node[tree.length * 2];
+
+        for (int i = 0; i < tree.length; i++) {
+            newArray[i] = tree[i];
+        }
+
+        tree = newArray;
+    }
+
+
+    /**
+     * Moves tree[index] down until its children are lower priority than it.
+     * 
+     * @param index
+     *            the index in tree of the element to sift down
+     */
+    protected void siftDown(int index) {
+        int parent = index;
+        int leftChild = leftChild(parent);
+        int rightChild = rightChild(parent);
+        if (leftChild == -1) {
+            return;
+        }
+        if (rightChild == -1) { // below line is should swap
+            if (compareNode(tree[parent], tree[leftChild]) > 0) {
+                swap(parent, leftChild);
+            }
+            return;
+        }
+        boolean goLeft = compareNode(tree[leftChild], tree[rightChild]) <= 0;
+        boolean shouldSwap = goLeft
+            ? compareNode(tree[parent], tree[leftChild]) > 0
+            : compareNode(tree[parent], tree[rightChild]) > 0;
+        while (shouldSwap) {
+            if (goLeft) {
+                swap(parent, leftChild);
+                parent = leftChild;
+            }
+            else {
+                swap(parent, rightChild);
+                parent = rightChild;
+            }
+            // move down:
+            leftChild = leftChild(parent);
+            rightChild = rightChild(parent);
+            if (leftChild == -1) {
+                return;
+            }
+            if (rightChild == -1) { // below line is should swap
+                if (compareNode(tree[parent], tree[leftChild]) > 0) {
+                    swap(parent, leftChild);
+                }
+                return;
+            }
+            goLeft = compareNode(tree[leftChild], tree[rightChild]) <= 0;
+            shouldSwap = goLeft
+                ? compareNode(tree[parent], tree[leftChild]) > 0
+                : compareNode(tree[parent], tree[rightChild]) > 0;
+        }
+    }
+}
