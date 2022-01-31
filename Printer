@@ -1,0 +1,140 @@
+import java.io.IOException;
+
+/**
+ * This class reads the sorted record file to find the top 100 VT students and
+ * their "national" rankings. Then, it uses the student file to find the
+ * corresponding student records of the top 100 VT students.
+ * 
+ * @author Taimoor Qamar
+ * @version 10-23-19
+ *
+ */
+public class Printer {
+    private String recordFilename;
+    private String studentFilename;
+
+
+    /**
+     * Makes a new Printer with the given record file name and student file name
+     * 
+     * @param recordFile
+     *            the file that this uses to find the ascores of the students
+     * @param studentFile
+     *            the file that this uses to find the student records
+     */
+    public Printer(String recordFile, String studentFile) {
+        recordFilename = recordFile;
+        studentFilename = studentFile;
+    }
+
+
+    /**
+     * Getter for the record file name
+     * 
+     * @return the file that this uses to find the ascores of the students
+     */
+    public String getRecordFilename() {
+        return recordFilename;
+    }
+
+
+    /**
+     * Setter for the record file name
+     * 
+     * @param newFilename
+     *            this will become the new record file name.
+     */
+    public void setRecordFilename(String newFilename) {
+        recordFilename = newFilename;
+    }
+
+
+    /**
+     * Getter for the student file name
+     * 
+     * @return the file that this uses to find the student records
+     */
+    public String getStudentFilename() {
+        return studentFilename;
+    }
+
+
+    /**
+     * Setter for the student file name
+     * 
+     * @param newFilename
+     *            this will become the new student file name.
+     */
+    public void setStudentFilename(String newFilename) {
+        studentFilename = newFilename;
+    }
+
+
+    /**
+     * Goes through the record file to find the top 100 VT students and stores
+     * their ranking, pid, and ascore. Returns the array used to store this info
+     * for the top 100 VT students.
+     * 
+     * @return the relevant data for top 100 VT students
+     */
+    public StudRank[] findTop100() {
+        StudRank[] result = new StudRank[100]; // might have to shrink later
+        InputBuffer in = new InputBuffer(recordFilename);
+        int studsIndex = 0; // for array
+        long fileIndex = 1; // rank
+        while (studsIndex < 100 && (!in.endOfFile() || in.hasInput())) {
+            try {
+                Node<Double, Long> currentNode = in.nextInput();
+                // if first three digits are 909:
+                if (currentNode.getValue() >= 909000000000L && currentNode
+                    .getValue() <= 909999999999L) {
+                    result[studsIndex] = new StudRank(fileIndex, currentNode
+                        .getValue(), currentNode.getKey());
+                    studsIndex++;
+                }
+                fileIndex++;
+            }
+            catch (IOException e) {
+                System.out.println("Printer: findTop100: IOException 1");
+            }
+
+        }
+        // not necessarily top 100
+        if (studsIndex < result.length) {
+            StudRank[] temp = result;
+            result = new StudRank[studsIndex];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = temp[i];
+            }
+        }
+        in.clear();
+        return result;
+    }
+
+
+    /**
+     * Prints the ranking, first and last name, and ascore of each student in
+     * the given array of top 100 VT students. Uses the student file to find the
+     * names.
+     * 
+     * @param studs
+     *            the array containing the top100 VT students
+     */
+    public void printTop100(StudRank[] studs) {
+        StudentManager studManager = new StudentManager();
+        studManager.load(studentFilename);
+        for (int i = 0; i < studs.length; i++) {
+            // need to exclude the 909 at the beginning
+            Student found = studManager.find(String.valueOf(studs[i].getPID())
+                .substring(3, 12));
+            if (found == null) {
+                System.out.println("Printer: printTop100: " + studs[i].getPID()
+                    + " not found; i = " + i);
+            }
+            System.out.println(studs[i].getPID() + ", " + found.getName()
+                + " at rank " + studs[i].getRank() + " with Ascore " + studs[i]
+                    .getA());
+        }
+    }
+
+}
