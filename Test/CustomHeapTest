@@ -4,9 +4,7 @@ import java.nio.ByteBuffer;
 /**
  * @author Taimoor Qamar
  *
- *
  */
- 
 public class CustomHeapTest extends student.TestCase {
     // FIELDS
     FileGenerator testFileGen;
@@ -71,5 +69,5 @@ public class CustomHeapTest extends student.TestCase {
             assertEquals(ByteBuffer.wrap(testByte).getDouble(8), ByteBuffer
                 .wrap(testHeap.remove()).getDouble(8), 0.01);
         }
-    }        
+    }      
 }
